@@ -107,6 +107,7 @@ pub struct TextFieldStyle {
     on_submit: Option<Rc<dyn Fn(&str)>>,
     error: Option<When>,
     disabled: Option<When>,
+    input_ref: Option<NodeRef>,
 }
 
 impl TextFieldStyle {
@@ -188,6 +189,13 @@ impl TextFieldStyle {
     /// Doesn't react and looks that way while `f` returns true.
     pub fn disabled_when(mut self, f: impl Fn() -> bool + 'static) -> Self {
         self.disabled = Some(Rc::new(f));
+        self
+    }
+
+    /// Gives the input itself (not the box around it) to `input_ref`, so that the app can focus
+    /// it: `input_ref.focus()`, for a field that should have the keyboard when it is shown.
+    pub fn input_ref(mut self, input_ref: NodeRef) -> Self {
+        self.input_ref = Some(input_ref);
         self
     }
 }
@@ -285,7 +293,9 @@ fn build(
         on_submit,
         error,
         disabled,
+        input_ref,
     } = style;
+    let field_ref = field_ref.or(input_ref);
     let has_leading = leading.is_some();
     let has_trailing = trailing.is_some();
     let has_label = label.is_some();

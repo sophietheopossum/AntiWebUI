@@ -1,6 +1,6 @@
 //! The wavy progress bar. See `docs/design/15-md3e.md`.
 
-use crate::color::color_scheme;
+use crate::color::{ColorScheme, color_scheme};
 use crate::motion::default_effects;
 use anti_webui::prelude::*;
 use std::cell::Cell;
@@ -81,6 +81,15 @@ fn keep_turning(time: Signal<f32>, wave: Animated<f32>, ticking: Signal<bool>, s
     });
 }
 
+/// The colors of a progress bar's line and track, from the scheme. Read while drawing, so they can
+/// follow signals.
+type BarColors = Rc<dyn Fn(&ColorScheme) -> (Color, Color)>;
+
+/// The line in the primary color on the secondary container, as Material has it.
+fn scheme_colors() -> BarColors {
+    Rc::new(|c| (c.primary, c.secondary_container))
+}
+
 /// A progress bar with a wavy line, for a value from 0 to 1. It takes the whole width it is given
 /// when styled with `.w_full()`.
 pub fn wavy_progress(progress: impl Fn() -> f32 + 'static) -> Div {
@@ -90,6 +99,21 @@ pub fn wavy_progress(progress: impl Fn() -> f32 + 'static) -> Div {
 /// [`wavy_progress`] whose line goes to a new value with `timing` instead of in half a second at an
 /// even pace: a short one for a value that changes often or is dragged, like a seek bar's.
 pub fn wavy_progress_eased(progress: impl Fn() -> f32 + 'static, timing: Transition) -> Div {
+    wavy_bar(progress, timing, scheme_colors())
+}
+
+/// [`wavy_progress_eased`] in colors of its own: `colors` gives (line, track), for a bar whose color
+/// says something of its own (a battery that is low, or charging). It is read while drawing, so
+/// it can follow signals.
+pub fn wavy_progress_colored(
+    progress: impl Fn() -> f32 + 'static,
+    timing: Transition,
+    colors: impl Fn(&ColorScheme) -> (Color, Color) + 'static,
+) -> Div {
+    wavy_bar(progress, timing, Rc::new(colors))
+}
+
+fn wavy_bar(progress: impl Fn() -> f32 + 'static, timing: Transition, colors: BarColors) -> Div {
     crate::ensure_ready();
     // Untracked, or whatever builds it would be built again each time the progress changes.
     let first = untrack(&progress).clamp(0.0, 1.0);
@@ -127,10 +151,10 @@ pub fn wavy_progress_eased(progress: impl Fn() -> f32 + 'static, timing: Transit
         .h(HEIGHT)
         .flex_none()
         .fill(move || {
-            let c = color_scheme();
+            let (line, track) = colors(&color_scheme());
             WAVE.params(Wave {
-                line: c.primary,
-                track: c.secondary_container,
+                line,
+                track,
                 progress: value.get(),
                 wave: wave.get(),
                 phase: phase.get(),
@@ -211,6 +235,18 @@ pub(super) fn check_more_shaders() -> Result<(), String> {
 
 /// A straight progress bar, for a value from 0 to 1.
 pub fn linear_progress(progress: impl Fn() -> f32 + 'static) -> Div {
+    linear_bar(progress, scheme_colors())
+}
+
+/// [`linear_progress`] in colors of its own, as [`wavy_progress_colored`].
+pub fn linear_progress_colored(
+    progress: impl Fn() -> f32 + 'static,
+    colors: impl Fn(&ColorScheme) -> (Color, Color) + 'static,
+) -> Div {
+    linear_bar(progress, Rc::new(colors))
+}
+
+fn linear_bar(progress: impl Fn() -> f32 + 'static, colors: BarColors) -> Div {
     crate::ensure_ready();
     let progress = Rc::new(progress);
     let told = progress.clone();
@@ -221,13 +257,13 @@ pub fn linear_progress(progress: impl Fn() -> f32 + 'static) -> Div {
         .h(FLAT_HEIGHT)
         .flex_none()
         .fill(move || {
-            let c = color_scheme();
+            let (line, track) = colors(&color_scheme());
             let p = value.get().clamp(0.0, 1.0);
             // The gap goes with the ends, which are round: 8 of the 240 by default.
             let gap = 8.0 / WIDTH;
             LINE.params(Line {
-                line: c.primary,
-                track: c.secondary_container,
+                line,
+                track,
                 tail0: 0.0,
                 head0: p,
                 tail1: 0.0,
