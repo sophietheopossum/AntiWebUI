@@ -15,3 +15,8 @@ bundled-fonts = []
 anti-webui.workspace = true
 anti-webui-symbols-outlined.workspace = true
 # Everything goes through the public API on purpose: see docs/design/15-md3e.md.
+
+# The examples and tests open windows and draw without one, so they take the platforms and
+# pictures the facade has by default. An app that depends on this crate chooses its own.
+[dev-dependencies]
+anti-webui = { workspace = true, default-features = true }

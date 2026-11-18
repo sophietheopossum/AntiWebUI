@@ -33,7 +33,10 @@ authors = ["bea4dev"]
 repository = "https://github.com/bea4dev/AntiWebUI"
 
 [workspace.dependencies]
-anti-webui = { path = "src/anti-webui", version = "0.1.0" }
+# No default features: a crate that only builds components on the facade (anti-webui-md3e)
+# must not decide which platforms an app is built for. Members that open windows of their
+# own ask for the defaults (see anti-webui-md3e's dev-dependencies).
+anti-webui = { path = "src/anti-webui", version = "0.1.0", default-features = false }
 anti-webui-internal = { path = "src/anti-webui-internal", version = "0.1.0", default-features = false }
 anti-webui-dylib = { path = "src/anti-webui-dylib", version = "0.1.0" }
 anti-webui-core = { path = "src/anti-webui-core", version = "0.1.0", default-features = false }
