@@ -295,7 +295,9 @@ fn build(
         disabled,
         input_ref,
     } = style;
-    let field_ref = field_ref.or(input_ref);
+    // The input always has a ref: a press anywhere on the field gives it the
+    // focus (below), as in Compose, not only a press on the text itself.
+    let field_ref = field_ref.or(input_ref).unwrap_or_else(node_ref);
     let has_leading = leading.is_some();
     let has_trailing = trailing.is_some();
     let has_label = label.is_some();
@@ -431,9 +433,7 @@ fn build(
             }
         })
         .on_focus_change(move |on| focused.set(on));
-    if let Some(field_ref) = field_ref {
-        input = input.node_ref(field_ref);
-    }
+    input = input.node_ref(field_ref);
 
     let row_text = {
         let side = colors.clone();
@@ -514,8 +514,16 @@ fn build(
     });
 
     let field_off = is_off.clone();
+    let press_off = is_off.clone();
     let field = div()
         .relative()
+        // The icons, the padding and the outline belong to the field too: a
+        // press on them focuses the input instead of taking the focus away.
+        .on_pointer_down(move |_| {
+            if !press_off() {
+                field_ref.focus();
+            }
+        })
         .flex()
         .flex_row()
         .flex_none()
